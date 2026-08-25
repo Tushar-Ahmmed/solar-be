@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Solar API
 
 ## Project
@@ -91,3 +92,7 @@ Development credentials are intentionally included in seed data for local testin
 - Password: Password123!
 
 > DEVELOPMENT ONLY: These credentials are not production credentials and must never be used in a live environment.
+=======
+# solar-be
+solar panel selling app be
+>>>>>>> 3aec28162b0d4cfa664349201bbfff362211fa60
