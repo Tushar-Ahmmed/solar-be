@@ -1,5 +1,13 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import type { AuthenticatedUser } from './interfaces/authenticated-user.interface';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -22,5 +30,27 @@ export class AuthController {
   @ApiResponse({ status: 200, type: AuthResponseDto })
   async login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto);
+  }
+
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Log out from all devices' })
+  @ApiResponse({ status: 200, description: 'All user tokens are invalidated' })
+  async logoutAll(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ message: string }> {
+    return this.authService.logoutAll(user.id);
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Log out from the current device' })
+  @ApiResponse({ status: 200, description: 'Current session is invalidated' })
+  async logout(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ message: string }> {
+    return this.authService.logout(user.id, user.sessionId);
   }
 }

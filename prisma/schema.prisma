@@ -170,6 +170,7 @@ model User {
   updatedAt    DateTime   @updatedAt
 
   roles                  UserRole[]
+  authSessions            AuthSession[]
   refreshTokens          RefreshToken[]
   customerProfile        CustomerProfile?
   notifications          Notification[]
@@ -237,6 +238,17 @@ model RefreshToken {
   ipAddress String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuthSession {
+  id        String    @id @default(uuid())
+  userId    String
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
 }
 
 model CustomerProfile {

@@ -60,7 +60,33 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    return this.buildAuthResponse(user);
+    const authenticatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    return this.buildAuthResponse({ ...user, ...authenticatedUser });
+  }
+
+  async logout(
+    userId: string,
+    sessionId: string,
+  ): Promise<{ message: string }> {
+    await this.prisma.authSession.updateMany({
+      where: { id: sessionId, userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    return { message: 'Logged out successfully' };
+  }
+
+  async logoutAll(userId: string): Promise<{ message: string }> {
+    await this.prisma.authSession.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    return { message: 'Logged out from all devices' };
   }
 
   private async buildAuthResponse(user: {
@@ -69,18 +95,28 @@ export class AuthService {
     firstName: string;
     lastName: string;
     phone: string | null;
+    passwordHash?: string;
   }): Promise<AuthResponseDto> {
-    const payload = { sub: user.id, email: user.email };
+    const session = await this.prisma.authSession.create({
+      data: { userId: user.id },
+    });
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      jti: session.id,
+    };
 
     const accessToken = await this.jwtService.signAsync(payload);
 
-    const { passwordHash: _passwordHash, ...safeUser } = user as typeof user & {
-      passwordHash?: string;
-    };
-
     return {
       accessToken,
-      user: safeUser,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+      },
     };
   }
 }

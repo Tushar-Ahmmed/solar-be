@@ -8,6 +8,7 @@ import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 interface JwtPayload {
   sub: string;
   email: string;
+  jti: string;
 }
 
 @Injectable()
@@ -27,24 +28,33 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: {
-        id: true,
-        email: true,
-        status: true,
-        roles: { select: { role: { select: { name: true } } } },
+    const session = await this.prisma.authSession.findFirst({
+      where: {
+        id: payload.jti,
+        userId: payload.sub,
+        revokedAt: null,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            status: true,
+            roles: { select: { role: { select: { name: true } } } },
+          },
+        },
       },
     });
 
-    if (!user || user.status !== 'ACTIVE') {
+    if (!session || session.user.status !== 'ACTIVE') {
       throw new UnauthorizedException('User is not active');
     }
 
     return {
-      id: user.id,
-      email: user.email,
-      roles: user.roles.map(({ role }) => role.name),
+      id: session.user.id,
+      email: session.user.email,
+      roles: session.user.roles.map(({ role }) => role.name),
+      sessionId: session.id,
     };
   }
 }
