@@ -3,10 +3,8 @@ services:
     image: postgres:16-alpine
     container_name: solar-postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: solar_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+    env_file:
+      - .env
     ports:
       - "5432:5432"
     volumes:
@@ -17,20 +15,33 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: solar-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - solar_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: solar-backend
+    user: root
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-      NODE_ENV: development
-      PORT: 3000
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/solar_db?schema=public
-      CORS_ORIGINS: http://localhost:3001,http://localhost:3002
-      SWAGGER_ENABLED: "true"
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
     ports:
       - "3000:3000"
     volumes:
@@ -40,3 +51,4 @@ services:
 
 volumes:
   solar_postgres_data:
+  solar_redis_data:
