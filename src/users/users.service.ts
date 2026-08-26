@@ -42,8 +42,18 @@ export class UsersService {
 
   async findAll(dto: ListUsersDto): Promise<PaginatedUsersResponseDto> {
     const normalizedSearch = dto.search?.trim();
+    const normalizedRole = dto.role?.trim().toUpperCase();
     const where: Prisma.UserWhereInput = {
       ...(dto.status ? { status: dto.status } : {}),
+      ...(normalizedRole
+        ? {
+            roles: {
+              some: {
+                role: { name: normalizedRole },
+              },
+            },
+          }
+        : {}),
       ...(normalizedSearch
         ? {
             OR: [

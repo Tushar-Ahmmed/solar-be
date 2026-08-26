@@ -66,6 +66,12 @@ export class UsersController {
     maximum: 100,
     default: 20,
   })
+  @ApiQuery({
+    name: 'role',
+    required: false,
+    type: String,
+    description: 'Filter by role name, for example ADMIN or CUSTOMER',
+  })
   @ApiQuery({ name: 'status', required: false, enum: UserStatus })
   @ApiResponse({ status: 200, type: PaginatedUsersResponseDto })
   findAll(@Query() dto: ListUsersDto): Promise<PaginatedUsersResponseDto> {
