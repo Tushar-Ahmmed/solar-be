@@ -51,6 +51,21 @@ export class UsersController {
     required: false,
     description: 'Search by name or email',
   })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    minimum: 1,
+    default: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    minimum: 1,
+    maximum: 100,
+    default: 20,
+  })
   @ApiQuery({ name: 'status', required: false, enum: UserStatus })
   @ApiResponse({ status: 200, type: PaginatedUsersResponseDto })
   findAll(@Query() dto: ListUsersDto): Promise<PaginatedUsersResponseDto> {
