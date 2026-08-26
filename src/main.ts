@@ -42,6 +42,10 @@ async function bootstrap() {
       .setTitle('Solar API')
       .setDescription('Bangladesh Solar Energy Business Platform API')
       .setVersion('1.0')
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        'access-token',
+      )
       .addServer('http://localhost:3000')
       .build();
 

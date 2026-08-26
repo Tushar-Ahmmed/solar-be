@@ -12,6 +12,9 @@ import {
   ApiOperation,
   ApiParam,
   ApiQuery,
+  ApiBearerAuth,
+  ApiUnauthorizedResponse,
+  ApiForbiddenResponse,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -30,6 +33,7 @@ import { UserResponseDto } from './dto/user-response.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
+@ApiBearerAuth('access-token')
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
@@ -37,6 +41,10 @@ export class UsersController {
 
   @Get()
   @Roles('ADMIN', 'SUPER_ADMIN', 'STAFF')
+  @ApiUnauthorizedResponse({ description: 'Authentication is required' })
+  @ApiForbiddenResponse({
+    description: 'Admin, staff, or super admin role required',
+  })
   @ApiOperation({ summary: 'List users' })
   @ApiQuery({
     name: 'search',
@@ -50,6 +58,7 @@ export class UsersController {
   }
 
   @Get('me')
+  @ApiUnauthorizedResponse({ description: 'Authentication is required' })
   @ApiOperation({ summary: 'Get the currently authenticated user profile' })
   @ApiResponse({ status: 200, type: UserResponseDto })
   findMe(@CurrentUser() user: AuthenticatedUser): Promise<UserResponseDto> {
@@ -57,6 +66,7 @@ export class UsersController {
   }
 
   @Patch('me')
+  @ApiUnauthorizedResponse({ description: 'Authentication is required' })
   @ApiOperation({ summary: 'Update the currently authenticated user profile' })
   @ApiResponse({ status: 200, type: UserResponseDto })
   updateMe(
@@ -68,6 +78,10 @@ export class UsersController {
 
   @Get(':id')
   @Roles('ADMIN', 'SUPER_ADMIN', 'STAFF')
+  @ApiUnauthorizedResponse({ description: 'Authentication is required' })
+  @ApiForbiddenResponse({
+    description: 'Admin, staff, or super admin role required',
+  })
   @ApiOperation({ summary: 'Get a user by ID' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiResponse({ status: 200, type: UserResponseDto })
@@ -77,6 +91,8 @@ export class UsersController {
 
   @Patch(':id/status')
   @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiUnauthorizedResponse({ description: 'Authentication is required' })
+  @ApiForbiddenResponse({ description: 'Admin or super admin role required' })
   @ApiOperation({ summary: 'Activate, deactivate, or suspend a user' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiResponse({ status: 200, type: UserResponseDto })
@@ -89,6 +105,8 @@ export class UsersController {
 
   @Patch(':id/role')
   @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiUnauthorizedResponse({ description: 'Authentication is required' })
+  @ApiForbiddenResponse({ description: 'Admin or super admin role required' })
   @ApiOperation({ summary: "Change a user's role" })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiResponse({ status: 200, type: UserResponseDto })
