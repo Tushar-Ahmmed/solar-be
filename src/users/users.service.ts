@@ -3,9 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, UserStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ListUsersDto } from './dto/list-users.dto';
+import { PaginatedUsersResponseDto } from './dto/paginated-users-response.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 
 const userSelect = {
@@ -36,40 +40,42 @@ type SelectedUser = Prisma.UserGetPayload<{ select: typeof userSelect }>;
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(
-    search?: string,
-    status?: UserStatus,
-  ): Promise<UserResponseDto[]> {
-    const normalizedSearch = search?.trim();
+  async findAll(dto: ListUsersDto): Promise<PaginatedUsersResponseDto> {
+    const normalizedSearch = dto.search?.trim();
+    const where: Prisma.UserWhereInput = {
+      ...(dto.status ? { status: dto.status } : {}),
+      ...(normalizedSearch
+        ? {
+            OR: [
+              { email: { contains: normalizedSearch, mode: 'insensitive' } },
+              {
+                firstName: { contains: normalizedSearch, mode: 'insensitive' },
+              },
+              { lastName: { contains: normalizedSearch, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+    const skip = (dto.page - 1) * dto.limit;
 
-    const users = await this.prisma.user.findMany({
-      where: {
-        ...(status ? { status } : {}),
-        ...(normalizedSearch
-          ? {
-              OR: [
-                { email: { contains: normalizedSearch, mode: 'insensitive' } },
-                {
-                  firstName: {
-                    contains: normalizedSearch,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  lastName: {
-                    contains: normalizedSearch,
-                    mode: 'insensitive',
-                  },
-                },
-              ],
-            }
-          : {}),
-      },
-      orderBy: { createdAt: 'desc' },
-      select: userSelect,
-    });
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: dto.limit,
+        orderBy: { createdAt: 'desc' },
+        select: userSelect,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
 
-    return users.map((user) => this.toResponse(user));
+    return {
+      items: users.map((user) => this.toResponse(user)),
+      page: dto.page,
+      limit: dto.limit,
+      total,
+      totalPages: Math.ceil(total / dto.limit),
+    };
   }
 
   async findOne(id: string): Promise<UserResponseDto> {
@@ -95,7 +101,6 @@ export class UsersService {
         : {}),
       ...(dto.lastName !== undefined ? { lastName: dto.lastName.trim() } : {}),
       ...(dto.phone !== undefined ? { phone: dto.phone?.trim() || null } : {}),
-      ...(dto.status !== undefined ? { status: dto.status } : {}),
     };
 
     try {
@@ -121,6 +126,55 @@ export class UsersService {
 
       throw error;
     }
+  }
+
+  async updateStatus(
+    id: string,
+    dto: UpdateUserStatusDto,
+  ): Promise<UserResponseDto> {
+    try {
+      await this.prisma.user.update({
+        where: { id },
+        data: { status: dto.status },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('User not found');
+      }
+      throw error;
+    }
+
+    return this.findOne(id);
+  }
+
+  async updateRole(
+    id: string,
+    dto: UpdateUserRoleDto,
+  ): Promise<UserResponseDto> {
+    const role = await this.prisma.role.findUnique({
+      where: { name: dto.role.trim().toUpperCase() },
+    });
+    if (!role) throw new NotFoundException('Role not found');
+
+    try {
+      await this.prisma.$transaction([
+        this.prisma.userRole.deleteMany({ where: { userId: id } }),
+        this.prisma.userRole.create({ data: { userId: id, roleId: role.id } }),
+      ]);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      ) {
+        throw new NotFoundException('User not found');
+      }
+      throw error;
+    }
+
+    return this.findOne(id);
   }
 
   private toResponse(user: SelectedUser): UserResponseDto {
