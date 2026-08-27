@@ -35,6 +35,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? errorResponse
         : ((errorResponse as { message?: string }).message ??
           'Unexpected error');
+    const errorCode =
+      typeof errorResponse === 'object' &&
+      errorResponse !== null &&
+      'errorCode' in errorResponse
+        ? String((errorResponse as { errorCode: string }).errorCode)
+        : status === Number(HttpStatus.INTERNAL_SERVER_ERROR)
+          ? 'INTERNAL_SERVER_ERROR'
+          : 'HTTP_ERROR';
 
     this.logger.error(
       `${request.method} ${request.url}`,
@@ -44,10 +52,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response.status(status).json({
       success: false,
       message,
-      errorCode:
-        status === Number(HttpStatus.INTERNAL_SERVER_ERROR)
-          ? 'INTERNAL_SERVER_ERROR'
-          : 'HTTP_ERROR',
+      errorCode,
       timestamp: new Date().toISOString(),
       path: request.url,
     });

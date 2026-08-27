@@ -6,6 +6,9 @@ export const validationSchema = Joi.object({
     .default('development'),
   PORT: Joi.number().default(3000),
   DATABASE_URL: Joi.string().required(),
+  REDIS_URL: Joi.string()
+    .uri({ scheme: ['redis', 'rediss'] })
+    .default('redis://localhost:6379'),
   CORS_ORIGINS: Joi.string().default(
     'http://localhost:3001,http://localhost:3002',
   ),

@@ -308,12 +308,17 @@ model Division {
   id        String   @id @default(uuid())
   name      String   @unique
   bnName    String?
+  slug      String   @unique
   code      String   @unique
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   districts District[]
   addresses Address[]
   leads     Lead[]     @relation("leadDivision")
+
+  @@index([isActive])
 }
 
 model District {
@@ -321,16 +326,20 @@ model District {
   divisionId String
   name       String
   bnName     String?
-  code       String
+  slug       String   @unique
+  code       String   @unique
+  isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   division  Division  @relation(fields: [divisionId], references: [id], onDelete: Restrict)
   upazilas  Upazila[]
   addresses Address[]
   leads     Lead[]    @relation("leadDistrict")
 
-  @@unique([divisionId, code])
   @@index([divisionId])
+  @@index([code])
+  @@index([isActive])
 }
 
 model Upazila {
@@ -338,15 +347,19 @@ model Upazila {
   districtId String
   name       String
   bnName     String?
-  code       String
+  slug       String   @unique
+  code       String   @unique
+  isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   district  District  @relation(fields: [districtId], references: [id], onDelete: Restrict)
   addresses Address[]
   leads     Lead[]    @relation("leadUpazila")
 
-  @@unique([districtId, code])
   @@index([districtId])
+  @@index([code])
+  @@index([isActive])
 }
 
 model Category {

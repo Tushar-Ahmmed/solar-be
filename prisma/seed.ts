@@ -34,6 +34,10 @@ const permissionDefinitions = [
   'reports.read',
   'settings.read',
   'settings.update',
+  'location:read',
+  'location:create',
+  'location:update',
+  'location:delete',
 ];
 
 const roleDefinitions = [
@@ -684,10 +688,14 @@ async function seedLocations() {
   for (const division of divisionDefinitions) {
     const record = await prisma.division.upsert({
       where: { code: division.code },
-      update: { bnName: division.bnName },
+      update: {
+        bnName: division.bnName,
+        slug: division.name.toLowerCase().replace(/\s+/g, '-'),
+      },
       create: {
         name: division.name,
         bnName: division.bnName,
+        slug: division.name.toLowerCase().replace(/\s+/g, '-'),
         code: division.code,
       },
     });
@@ -698,17 +706,16 @@ async function seedLocations() {
   for (const district of districtDefinitions) {
     const divisionId = divisionMap.get(district.division);
     const record = await prisma.district.upsert({
-      where: {
-        divisionId_code: {
-          divisionId: divisionId ?? '',
-          code: district.code,
-        },
+      where: { code: district.code },
+      update: {
+        bnName: district.bnName,
+        slug: `${district.name.toLowerCase().replace(/\s+/g, '-')}-${district.code.toLowerCase()}`,
       },
-      update: { bnName: district.bnName },
       create: {
         divisionId: divisionId ?? '',
         name: district.name,
         bnName: district.bnName,
+        slug: `${district.name.toLowerCase().replace(/\s+/g, '-')}-${district.code.toLowerCase()}`,
         code: district.code,
       },
     });
@@ -721,17 +728,16 @@ async function seedLocations() {
       `${getDivisionForDistrict(upazila.district)}:${upazila.district}`,
     );
     const record = await prisma.upazila.upsert({
-      where: {
-        districtId_code: {
-          districtId: districtId ?? '',
-          code: upazila.code,
-        },
+      where: { code: upazila.code },
+      update: {
+        bnName: upazila.bnName,
+        slug: `${upazila.name.toLowerCase().replace(/\s+/g, '-')}-${upazila.code.toLowerCase()}`,
       },
-      update: { bnName: upazila.bnName },
       create: {
         districtId: districtId ?? '',
         name: upazila.name,
         bnName: upazila.bnName,
+        slug: `${upazila.name.toLowerCase().replace(/\s+/g, '-')}-${upazila.code.toLowerCase()}`,
         code: upazila.code,
       },
     });
@@ -777,8 +783,12 @@ async function seedRolesAndPermissions() {
       update: {},
       create: {
         name: permission,
-        resource: permission.split('.')[0],
-        action: permission.split('.')[1],
+        resource: permission.includes(':')
+          ? permission.split(':')[0]
+          : permission.split('.')[0],
+        action: permission.includes(':')
+          ? permission.split(':')[1]
+          : permission.split('.')[1],
         description: `${permission} access`,
       },
     });
@@ -807,6 +817,7 @@ async function seedRolesAndPermissions() {
       'projects.update',
       'warranty.read',
       'reports.read',
+      'location:read',
     ],
     CUSTOMER: [
       'products.read',
@@ -814,6 +825,7 @@ async function seedRolesAndPermissions() {
       'quotes.read',
       'services.read',
       'warranty.read',
+      'location:read',
     ],
   };
 
@@ -839,6 +851,14 @@ async function seedRolesAndPermissions() {
         },
       });
     }
+  }
+
+  const adminRoleId = roleMap.get('ADMIN');
+  const deleteLocationPermissionId = permissionMap.get('location:delete');
+  if (adminRoleId && deleteLocationPermissionId) {
+    await prisma.rolePermission.deleteMany({
+      where: { roleId: adminRoleId, permissionId: deleteLocationPermissionId },
+    });
   }
 
   return { roleMap, permissionMap };
